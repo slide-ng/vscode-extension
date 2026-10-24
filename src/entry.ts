@@ -1,5 +1,7 @@
-// Which markdown file is the deck. No VS Code API here: `exists` is passed in, so the rules can be tested.
+// Which markdown file is the deck, and its config file. No VS Code API here: `exists` and `read` are passed in, so the
+// rules can be tested.
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { parse } from 'yaml';
 
 export const DEFAULT_ENTRY = 'slides.md';
 
@@ -47,4 +49,36 @@ export function translationFiles(headmatter: Record<string, unknown> | undefined
     if (path !== resolve(entry)) files.add(path);
   }
   return [...files];
+}
+
+/** The names of the deck's config file (slide.ng 2.2), in the order slide.ng looks for them. */
+export const CONFIG_FILES = ['slide-ng.config.yaml', 'slide-ng.config.yml', 'slide-ng.config.json'];
+
+/** The deck's config file: the first of CONFIG_FILES in the entry file's folder, or undefined when there is none. */
+export function configFile(entry: string, exists: (path: string) => boolean): string | undefined {
+  return CONFIG_FILES.map((name) => join(dirname(entry), name)).find(exists);
+}
+
+/**
+ * The deck's options: the keys of its config file under its headmatter, key by key, as slide.ng 2.2 reads them. `read`
+ * gives the text of a file. A config file that cannot be read or is not a map of keys counts as empty: the CLI reports it.
+ */
+export function deckOptions(
+  headmatter: Record<string, unknown> | undefined,
+  entry: string,
+  exists: (path: string) => boolean,
+  read: (path: string) => string,
+): Record<string, unknown> {
+  const file = configFile(entry, exists);
+  let config: unknown;
+  if (file) {
+    try {
+      const text = read(file);
+      config = file.endsWith('.json') ? JSON.parse(text) : parse(text);
+    } catch {
+      config = undefined;
+    }
+  }
+  const keys = config && typeof config === 'object' && !Array.isArray(config) ? config : {};
+  return { ...keys, ...headmatter };
 }

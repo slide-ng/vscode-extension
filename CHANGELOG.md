@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.4.0] - unreleased
+
+Support for slide.ng 2.2. Nothing is published yet.
+
+### Added
+
+- The deck's config file, `slide-ng.config.yaml` (or `.yml`, `.json`) next to the deck file (slide.ng 2.2): its `routerMode` and `languages` count for the preview and the translation files, under the headmatter key by key, as slide.ng reads them. Saving, adding or removing the file reloads the deck.
+
 ## [0.3.0] - unreleased
 
 Support for slide.ng 2.1. Nothing is published yet.

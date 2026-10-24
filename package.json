@@ -2,7 +2,7 @@
   "name": "slide-ng-vscode",
   "displayName": "slide.ng",
   "description": "Syntax, outline, dev server and preview for slide.ng decks (slides.md)",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "slide-ng",
   "icon": "res/icon.png",
   "galleryBanner": {
@@ -381,6 +381,7 @@
     "tm-grammars": "^1.32.22",
     "typescript": "^7.0.2",
     "vscode-oniguruma": "^2.0.1",
-    "vscode-textmate": "^9.3.2"
+    "vscode-textmate": "^9.3.2",
+    "yaml": "^2.9.1"
   }
 }

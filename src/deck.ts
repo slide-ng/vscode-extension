@@ -1,10 +1,11 @@
 // The deck of the workspace: which file it is, its parsed slides, and which slide the cursor is on.
 // Everything else (outline, status bar, preview, commands) asks this class.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import * as vscode from 'vscode';
 import { settings } from './config.ts';
 import { slideAtLine } from './edit.ts';
-import { resolveEntry, translationFiles } from './entry.ts';
+import { deckOptions, resolveEntry, translationFiles } from './entry.ts';
 import { buildOutline, type OutlineItem } from './outline.ts';
 import { parseSlides, type SlideSource } from './parser.ts';
 import { routerModeOf, type RouterMode } from './preview-url.ts';
@@ -20,7 +21,9 @@ export class Deck implements vscode.Disposable {
   /** Set when the file could not be read as slides. */
   error?: string;
   current = 1;
-  /** The translation files the headmatter's `languages` lists (slide.ng 2.1). Their slides are paired with ours by number. */
+  /** The headmatter over the deck's `slide-ng.config.yaml`, if it has one (slide.ng 2.2). */
+  options: Record<string, unknown> = {};
+  /** The translation files the deck's `languages` lists (slide.ng 2.1). Their slides are paired with ours by number. */
   translations: vscode.Uri[] = [];
   private translated?: { uri: string; version: number; slides: SlideSource[] };
 
@@ -33,10 +36,16 @@ export class Deck implements vscode.Disposable {
 
   constructor() {
     const watcher = vscode.workspace.createFileSystemWatcher('**/*.md');
+    const configWatcher = vscode.workspace.createFileSystemWatcher('**/slide-ng.config.{yaml,yml,json}');
+    const configChanged = (uri: vscode.Uri) => this.isConfig(uri) && this.schedule();
     this.disposables.push(
       this.changed,
       this.currentChanged,
       watcher,
+      configWatcher,
+      configWatcher.onDidCreate(configChanged),
+      configWatcher.onDidDelete(configChanged),
+      configWatcher.onDidChange(configChanged),
       watcher.onDidCreate(() => void this.detect()),
       watcher.onDidDelete(() => void this.detect()),
       watcher.onDidChange((uri) => this.isEntry(uri) && this.schedule()),
@@ -56,13 +65,18 @@ export class Deck implements vscode.Disposable {
     return this.entry !== undefined;
   }
 
-  /** The headmatter's `routerMode`: how the dev server puts the slide in the address. */
+  /** The deck's `routerMode` (headmatter or config file): how the dev server puts the slide in the address. */
   get routerMode(): RouterMode {
-    return routerModeOf(this.slides[0]?.frontmatter);
+    return routerModeOf(this.options);
   }
 
   private isEntry(uri: vscode.Uri) {
     return this.entry !== undefined && uri.toString() === this.entry.toString();
+  }
+
+  /** A config file in the folder of the deck file (slide.ng reads it only there). */
+  private isConfig(uri: vscode.Uri) {
+    return this.entry !== undefined && dirname(uri.fsPath) === dirname(this.entry.fsPath);
   }
 
   private isTranslation(uri: vscode.Uri) {
@@ -105,6 +119,7 @@ export class Deck implements vscode.Disposable {
     if (!this.entry) {
       this.slides = [];
       this.items = [];
+      this.options = {};
       this.translations = [];
       this.error = undefined;
     } else {
@@ -112,9 +127,10 @@ export class Deck implements vscode.Disposable {
         const doc = await vscode.workspace.openTextDocument(this.entry);
         this.slides = await parseSlides(doc.getText(), doc.fileName);
         this.items = buildOutline(this.slides);
-        this.translations = translationFiles(this.slides[0]?.frontmatter, this.entry.fsPath).map((p) =>
-          vscode.Uri.file(p),
+        this.options = deckOptions(this.slides[0]?.frontmatter, this.entry.fsPath, existsSync, (p) =>
+          readFileSync(p, 'utf8'),
         );
+        this.translations = translationFiles(this.options, this.entry.fsPath).map((p) => vscode.Uri.file(p));
         this.error = undefined;
       } catch (e) {
         // Keep the last good outline; say what went wrong.

@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { estimateClicks } from '../src/clicks.ts';
-import { resolveEntry, translationFiles } from '../src/entry.ts';
+import { configFile, deckOptions, resolveEntry, translationFiles } from '../src/entry.ts';
 import { buildOutline, describe } from '../src/outline.ts';
 import { parseSlides } from '../src/parser.ts';
 import { isSlideNg, probe } from '../src/probe.ts';
@@ -174,6 +174,46 @@ test('translations: the other files of languages (2.1)', async () => {
   assert.deepEqual(translationFiles(await head('title: x'), '/w/slides.md'), []);
   assert.deepEqual(translationFiles(await head('languages: [slides.tr.md]'), '/w/slides.md'), []);
   assert.deepEqual(translationFiles(undefined, '/w/slides.md'), []);
+});
+
+test('config file: slide-ng.config.yaml under the headmatter (2.2)', async () => {
+  const files: Record<string, string> = {};
+  const exists = (p: string) => p in files;
+  const read = (p: string) => {
+    if (!(p in files)) throw new Error(`no ${p}`);
+    return files[p];
+  };
+  const head = async (text: string) => (await parseSlides(`---\n${text}\n---\n\n# A\n`, '/w/slides.md'))[0].frontmatter;
+  // No file: the headmatter alone.
+  assert.equal(configFile('/w/slides.md', exists), undefined);
+  assert.equal(deckOptions(await head('routerMode: hash'), '/w/slides.md', exists, read).routerMode, 'hash');
+  // The config file's keys count, and the headmatter wins key by key.
+  files['/w/slide-ng.config.yaml'] = 'routerMode: memory\nlanguages:\n  en: slides.md\n  tr: slides.tr.md\n';
+  assert.equal(configFile('/w/slides.md', exists), '/w/slide-ng.config.yaml');
+  const options = deckOptions(await head('title: x'), '/w/slides.md', exists, read);
+  assert.equal(routerModeOf(options), 'memory');
+  assert.deepEqual(translationFiles(options, '/w/slides.md'), ['/w/slides.tr.md']);
+  assert.equal(routerModeOf(deckOptions(await head('routerMode: hash'), '/w/slides.md', exists, read)), 'hash');
+  assert.deepEqual(
+    translationFiles(
+      deckOptions(await head('languages: { en: slides.md, de: slides.de.md }'), '/w/slides.md', exists, read),
+      '/w/slides.md',
+    ),
+    ['/w/slides.de.md'],
+  );
+  // .yaml comes before .yml and .json; only the entry file's folder is looked in.
+  files['/w/slide-ng.config.json'] = '{ "routerMode": "hash" }';
+  assert.equal(configFile('/w/slides.md', exists), '/w/slide-ng.config.yaml');
+  delete files['/w/slide-ng.config.yaml'];
+  assert.equal(routerModeOf(deckOptions(await head('title: x'), '/w/slides.md', exists, read)), 'hash');
+  assert.equal(configFile('/w/talk/slides.md', exists), undefined);
+  // A file that is not valid, or not a map of keys, counts as empty (the CLI reports it).
+  files['/w/slide-ng.config.json'] = '{ routerMode: hash';
+  assert.equal(routerModeOf(deckOptions(await head('title: x'), '/w/slides.md', exists, read)), 'history');
+  delete files['/w/slide-ng.config.json'];
+  files['/w/slide-ng.config.yml'] = '- routerMode: hash\n';
+  assert.equal(routerModeOf(deckOptions(await head('title: x'), '/w/slides.md', exists, read)), 'history');
+  assert.deepEqual(deckOptions(undefined, '/w/slides.md', exists, read), {});
 });
 
 test('status text', () => {
