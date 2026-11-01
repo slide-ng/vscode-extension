@@ -40,6 +40,7 @@ Other scripts: `npm run build`, `npm test`, `npm run typecheck`, `npm run format
 - The preview reads `routerMode` and `languages` from the deck's headmatter and its `slide-ng.config.yaml` (slide.ng 2.2) only; a theme or addon that sets them is not seen.
 - With `languages`, the outline and the slide edits work on the entry file only. The preview shows the language chosen in the deck's own language menu, not the file the cursor is in.
 - Preview in remote windows (SSH, containers, Codespaces) is not checked.
+- slide.ng 3.0's deck browser (`b`, or the globe button in the bar) was not checked in the preview panel; popups such as its **Open in window** may behave differently there than in a browser tab. In a remote window the dev server's page proxy listens on a port of its own on the remote machine, which is not forwarded, so sites that refuse framing are not expected to load through it. **Open Preview in Browser** opens the deck in a browser tab instead.
 
 For the full syntax and the CLI, see the documentation at [slide-ng.dev](https://slide-ng.dev).
 

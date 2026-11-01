@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.5.0] - unreleased
+
+Support for slide.ng 3.0. Nothing is published yet. The extension needs no code change for 3.0: the headmatter is highlighted as YAML, so the new `browser` key needs nothing, and the preview shows the deck as the dev server serves it.
+
+### Changed
+
+- The README says how slide.ng 3.0's deck browser (`b`, or the globe button in the bar) behaves in the preview panel: it was not checked there, and in a remote window the dev server's page proxy is on a port of its own that is not forwarded.
+
 ## [0.4.0] - unreleased
 
 Support for slide.ng 2.2. Nothing is published yet.
