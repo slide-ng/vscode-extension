@@ -23,7 +23,7 @@ jobs:
       - run: npm test
       - name: Package the extension (nothing is published)
         run: npm run package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vscode-extension-vsix
           path: vscode-extension.vsix
